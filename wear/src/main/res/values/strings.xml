@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Messenger</string>
+    <!--
+    This string is used for square devices and overridden by hello_world in
+    values-round/strings.xml for round devices.
+    -->
+    <string name="title_activity_chat">Chat_Activity</string>
+    <string name="title_activity_messages">Messages</string>
+    <string name="title_activity_text_message_input">TextMessageInput</string>
+    <string name="title_activity_voice">Voice</string>
+    <string name="activity_welcome_text">Welcome to Wearable-Messenger!\n\nThis App uses the Telegram API (LibTD).\nYou can login with your existing Telegram account and start chatting.</string>
+</resources>

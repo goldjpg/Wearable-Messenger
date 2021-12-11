@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    compileSdk 31
+
+    defaultConfig {
+        applicationId "de.goldjpg.wearable.messenger"
+        minSdk 28
+        targetSdk 31
+        versionCode 1
+        versionName "0.1"
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    implementation 'com.google.android.gms:play-services-wearable:17.1.0'
+    implementation 'androidx.percentlayout:percentlayout:1.0.0'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation 'com.arthenica:mobile-ffmpeg-full:4.4'
+    implementation 'androidx.wear:wear:1.2.0'
+    implementation project(path: ':libtd')
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
+    //noinspection GradleCompatible
+    implementation 'com.google.android.support:wearable:2.8.1'
+    wearApp project(":wear")
+}
