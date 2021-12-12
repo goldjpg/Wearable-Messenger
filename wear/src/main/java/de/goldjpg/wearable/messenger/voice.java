@@ -54,6 +54,8 @@ public class voice extends Activity {
             if(recording){
                 recorder.stop();
                 recordbut.setEnabled(false);
+                timer.cancel();
+                secondsview.setText("Sending...");
                 new Thread(new Runnable() {
                     @Override
                     public void run() {

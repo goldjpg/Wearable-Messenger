@@ -29,6 +29,23 @@
             android:visibility="gone"
             android:src="@drawable/ic_baseline_play_arrow_24"
             android:textColor="#FFFFFF" />
+        <ImageView
+            android:id="@+id/imgview"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:visibility="gone"
+            android:src="@drawable/ic_baseline_play_arrow_24"
+            android:textColor="#FFFFFF" />
+        <TextView
+            android:id="@+id/minimsg"
+            android:visibility="gone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:maxLines="2"
+            android:textColor="#FFFFFF" />
         <TextView
             android:id="@+id/autortext"
             android:layout_width="wrap_content"

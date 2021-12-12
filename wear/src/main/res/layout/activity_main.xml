@@ -17,7 +17,7 @@
         <ScrollView
             android:id="@+id/welcomePane"
             android:layout_width="match_parent"
-            android:visibility="visible"
+            android:visibility="gone"
             android:layout_height="match_parent">
             <androidx.appcompat.widget.LinearLayoutCompat
                 android:layout_width="match_parent"

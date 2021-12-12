@@ -5,10 +5,12 @@ import android.app.Activity;
 import android.app.RemoteInput;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Looper;
 import android.support.wearable.input.RemoteInputIntent;
 import android.util.Log;
 import android.view.Gravity;
@@ -16,6 +18,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -164,12 +167,7 @@ public class Messages extends Activity {
                                 mediaPlayer.prepare();
                                 mediaPlayer.start();
                                 print("Sound success" + mediaPlayer.getDuration());
-                                Messages.this.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        adapter.notifyItemChanged(adapter.localDataSet.indexOf(message));
-                                    }
-                                });
+                                UpdateMessage(message.id);
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 print("Sound error");
@@ -183,9 +181,10 @@ public class Messages extends Activity {
                         MainActivity.client.client.send(new TdApi.DownloadFile(cont.voiceNote.voice.id, 5, cont.voiceNote.voice.local.downloadOffset, 0, false), new Client.ResultHandler() {
                             @Override
                             public void onResult(TdApi.Object object) {
-                                print("res:"+object.toString());
+                                UpdateMessage(message.id);
                             }
                         });
+                        UpdateMessage(message.id);
                     }
                 }
             }
@@ -197,14 +196,13 @@ public class Messages extends Activity {
                 mediaPlayer.start();
                 print("Resume file...");
             }
-            adapter.notifyItemChanged(adapter.localDataSet.indexOf(message)+1);
+            UpdateMessage(message.id);
         }else{
             mediaPlayer.stop();
             mediaPlayer.release();
             mediaPlayer = null;
-            int i = adapter.localDataSet.indexOf(message);
+            UpdateMessage(curplay.id);
             curplay = null;
-            adapter.notifyItemChanged(i);
             print("Play new file...");
             playmemo(message);
         }
@@ -225,6 +223,8 @@ public class Messages extends Activity {
             TextView msgView;
             TextView author;
             ImageButton voicebutton;
+            ImageView myimage;
+            TextView minimsg;
 
             public MessageViewHolder(View view) {
                 super(view);
@@ -232,6 +232,8 @@ public class Messages extends Activity {
                 msgView = view.findViewById(R.id.msgr);
                 author = view.findViewById(R.id.autortext);
                 voicebutton = view.findViewById(R.id.playbut);
+                myimage = view.findViewById(R.id.imgview);
+                minimsg = view.findViewById(R.id.minimsg);
                 voicebutton.setOnClickListener(this);
             }
 
@@ -295,16 +297,18 @@ public class Messages extends Activity {
             Object ob = localDataSet.get(position);
             if(ob instanceof TdApi.Message){
                 TdApi.Message me = (TdApi.Message) localDataSet.get(position);
+                print("Update " + me.id + "|" + position);
                 MessageViewHolder viewHolder = (MessageViewHolder) view;
                 viewHolder.message = me;
-                viewHolder.msgView.setVisibility(View.VISIBLE);
+                viewHolder.voicebutton.setVisibility(View.GONE);
+                viewHolder.msgView.setVisibility(View.GONE);
+                viewHolder.author.setVisibility(View.GONE);
+                viewHolder.myimage.setVisibility(View.GONE);
+                viewHolder.minimsg.setVisibility(View.GONE);
                 if(me.sender.getConstructor() == TdApi.MessageSenderChat.CONSTRUCTOR){
                     viewHolder.messageView.setGravity(Gravity.CENTER);
-                    viewHolder.author.setVisibility(View.GONE);
-                    viewHolder.msgView.setText("Special");
                 }else if(me.sender.getConstructor() == TdApi.MessageSenderUser.CONSTRUCTOR){
                     viewHolder.author.setVisibility(View.VISIBLE);
-                    viewHolder.voicebutton.setVisibility(View.GONE);
                     if(me.isOutgoing){
                         viewHolder.messageView.setGravity(Gravity.RIGHT);
                         viewHolder.author.setText(datetoString(me.date));
@@ -318,25 +322,58 @@ public class Messages extends Activity {
                         }catch (Exception ignored){}
                         viewHolder.author.setText(username+" "+datetoString(me.date));
                     }
-                    if(me.content.getConstructor() == TdApi.MessageText.CONSTRUCTOR){
-                        TdApi.MessageText cont = (TdApi.MessageText) me.content;
-                        viewHolder.msgView.setText(cont.text.text);
-                    }else if(me.content.getConstructor() == TdApi.MessageVoiceNote.CONSTRUCTOR){
-                        viewHolder.msgView.setVisibility(View.GONE);
-                        viewHolder.voicebutton.setVisibility(View.VISIBLE);
-                        if(curplay != null){
-                            if(curplay.id == me.id){
-                                if(mediaPlayer.isPlaying()){
-                                    viewHolder.voicebutton.setImageResource(R.drawable.ic_baseline_pause_24);
-                                }else if(mediaPlayer.isPlaying()){
-                                    viewHolder.voicebutton.setImageResource(R.drawable.ic_baseline_play_arrow_24);
-                                }
+                }
+                if(me.content.getConstructor() == TdApi.MessageText.CONSTRUCTOR){
+                    TdApi.MessageText cont = (TdApi.MessageText) me.content;
+                    viewHolder.msgView.setVisibility(View.VISIBLE);
+                    viewHolder.msgView.setText(cont.text.text);
+                }else if(me.content.getConstructor() == TdApi.MessageVoiceNote.CONSTRUCTOR){
+                    viewHolder.voicebutton.setVisibility(View.VISIBLE);
+                    TdApi.MessageVoiceNote cont = (TdApi.MessageVoiceNote) me.content;
+                    if(cont.voiceNote.voice.local.isDownloadingCompleted){
+                        viewHolder.voicebutton.setImageResource(R.drawable.ic_baseline_play_arrow_24);
+                        if(curplay != null && mediaPlayer != null){
+                            if(curplay.id == me.id && mediaPlayer.isPlaying()){
+                                viewHolder.voicebutton.setImageResource(R.drawable.ic_baseline_pause_24);
                             }
                         }
-
+                    }else if(cont.voiceNote.voice.local.isDownloadingActive){
+                        viewHolder.voicebutton.setImageResource(R.drawable.ic_baseline_cached_24);
                     }else{
-                        viewHolder.msgView.setText("unknown message");
+                        viewHolder.voicebutton.setImageResource(R.drawable.ic_baseline_arrow_downward_24);
                     }
+                    if(cont.caption.text.length() > 0){
+                        viewHolder.minimsg.setVisibility(View.VISIBLE);
+                        viewHolder.minimsg.setText(cont.caption.text);
+                    }
+                }else if(me.content.getConstructor() == TdApi.MessagePhoto.CONSTRUCTOR){
+                    viewHolder.myimage.setVisibility(View.VISIBLE);
+                    TdApi.MessagePhoto cont = (TdApi.MessagePhoto) me.content;
+                    TdApi.File myfile = getNormalPhoto(cont.photo.sizes, "m");
+                    if(myfile.local.isDownloadingCompleted){
+                        viewHolder.myimage.setImageBitmap(BitmapFactory.decodeFile(myfile.local.path));
+                    }else{
+                        if(myfile.local.canBeDownloaded && !myfile.local.isDownloadingActive){
+                            MainActivity.client.client.send(new TdApi.DownloadFile(myfile.id, 15, myfile.local.downloadOffset, 0, false), new Client.ResultHandler() {
+                                @Override
+                                public void onResult(TdApi.Object object) {
+                                    UpdateMessage(myfile.id);
+                                }
+                            });
+                        }
+                        if(cont.photo.minithumbnail != null){
+                            viewHolder.myimage.setImageBitmap(BitmapFactory.decodeByteArray(cont.photo.minithumbnail.data, 0, cont.photo.minithumbnail.data.length));
+                        }else{
+                            viewHolder.myimage.setImageResource(R.drawable.ic_baseline_cached_24);
+                        }
+                    }
+                    if(cont.caption.text.length() > 0){
+                        viewHolder.minimsg.setVisibility(View.VISIBLE);
+                        viewHolder.minimsg.setText(cont.caption.text);
+                    }
+                }else{
+                    viewHolder.msgView.setVisibility(View.VISIBLE);
+                    viewHolder.msgView.setText("unknown message");
                 }
             }
         }
@@ -345,6 +382,40 @@ public class Messages extends Activity {
         public int getItemCount() {
             return localDataSet.size();
         }
+    }
+
+    public void UpdateMessage(long id){
+        if(Looper.myLooper() == Looper.getMainLooper()){
+            UpdateM(id);
+        }else{
+            Messages.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    UpdateM(id);
+                }
+            });
+        }
+    }
+    private void UpdateM(long id){
+        for(Object me:adapter.localDataSet){
+            if(me instanceof TdApi.Message){
+                TdApi.Message curob = (TdApi.Message) me;
+                if(curob.id == id){
+                    adapter.notifyItemChanged(adapter.localDataSet.indexOf(me));
+                    chatview.scrollBy(0, 1);
+                    return;
+                }
+            }
+        }
+    }
+
+    public TdApi.File getNormalPhoto(TdApi.PhotoSize[] sizes, String type){
+        for(TdApi.PhotoSize s:sizes){
+            if(s.type.equals(type)){
+                return s.photo;
+            }
+        }
+        return sizes[0].photo;
     }
 
     void print(String s){
@@ -376,7 +447,6 @@ public class Messages extends Activity {
                         adapter.notifyItemRangeChanged(0, messages.totalCount);
                         chatview.scrollToPosition(curscroll+messages.totalCount);
                     }
-
                 }else{
                     print("Failed to receive messages");
                 }
@@ -417,6 +487,7 @@ public class Messages extends Activity {
                                 if(curob.id == update.messageId){
                                     curob.content = update.newContent;
                                     adapter.notifyItemChanged(adapter.localDataSet.indexOf(me));
+                                    chatview.invalidate();
                                     break;
                                 }
                             }

@@ -44,6 +44,7 @@ public class MainActivity extends Activity {
             Intent i = new Intent(this, Chat_Activity.class);
             startActivity(i);
             finish();
+            return;
         }
         prefs = getSharedPreferences("config", MODE_PRIVATE);
         Settings.loadsettings(prefs);

@@ -50,11 +50,13 @@ public class Chat_Activity extends Activity {
     public void reloadchats(){
         adapter.localDataSet.clear();
         synchronized (MainActivity.client.chats){
-            java.util.Iterator<TGAPI.OrderedChat> iter = MainActivity.client.mainChatList.iterator();
-            for (int i = 0;  i < MainActivity.client.mainChatList.size(); i++) {
-                long chatId = iter.next().chatId;
-                TdApi.Chat chat = MainActivity.client.chats.get(chatId);
-                adapter.localDataSet.add(chat);
+            synchronized (MainActivity.client.mainChatList){
+                java.util.Iterator<TGAPI.OrderedChat> iter = MainActivity.client.mainChatList.iterator();
+                for (int i = 0;  i < MainActivity.client.mainChatList.size(); i++) {
+                    long chatId = iter.next().chatId;
+                    TdApi.Chat chat = MainActivity.client.chats.get(chatId);
+                    adapter.localDataSet.add(chat);
+                }
             }
         }
         adapter.notifyDataSetChanged();
@@ -118,11 +120,19 @@ public class Chat_Activity extends Activity {
         @Override
         public void onBindViewHolder(ViewHolder viewHolder, final int position) {
             TdApi.Chat cur = localDataSet.get(position);
-            viewHolder.getTextView().setText(cur.title);
+            if(cur.title.length() > 0){
+                viewHolder.getTextView().setText(cur.title);
+            }else{
+                viewHolder.getTextView().setText("unknown");
+            }
             if(cur.photo != null){
                 if(cur.photo.small.local.isDownloadingCompleted){
                     viewHolder.getImageView().setImageBitmap(BitmapFactory.decodeFile(cur.photo.small.local.path));
+                }else{
+                    viewHolder.getImageView().setImageResource(R.drawable.ic_baseline_cached_24);
                 }
+            }else{
+                viewHolder.getImageView().setImageResource(R.drawable.ic_baseline_chat_24);
             }
             viewHolder.chatid = cur.id;
         }
@@ -143,9 +153,11 @@ public class Chat_Activity extends Activity {
         Log.i("Messenger", s);
     }
 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        print("Destroy");
         MainActivity.client.mylistener.remove(myhandler);
     }
 
@@ -157,18 +169,16 @@ public class Chat_Activity extends Activity {
         public void onLayoutFinished(View child, RecyclerView parent) {
 
             // Figure out % progress from top to bottom
-            if(child.getHeight() < 200){
-                float centerOffset = ((float) child.getHeight() / 2.0f) / (float) parent.getHeight();
-                float yRelativeToCenterOffset = (child.getY() / parent.getHeight()) + centerOffset;
+            float centerOffset = ((float) child.getHeight() / 2.0f) / (float) parent.getHeight();
+            float yRelativeToCenterOffset = (child.getY() / parent.getHeight()) + centerOffset;
 
-                // Normalize for center
-                float progressToCenter = Math.abs(0.5f - yRelativeToCenterOffset);
-                // Adjust to the maximum scale
-                progressToCenter = Math.min(progressToCenter, MAX_ICON_PROGRESS);
+            // Normalize for center
+            float progressToCenter = Math.abs(0.5f - yRelativeToCenterOffset);
+            // Adjust to the maximum scale
+            progressToCenter = Math.min(progressToCenter, MAX_ICON_PROGRESS);
 
-                child.setScaleX(1 - progressToCenter);
-                child.setScaleY(1 - progressToCenter);
-            }
+            child.setScaleX(1 - progressToCenter);
+            child.setScaleY(1 - progressToCenter);
 
         }
     }
@@ -202,7 +212,12 @@ public class Chat_Activity extends Activity {
                     break;
                 }
                 case TdApi.UpdateChatPosition.CONSTRUCTOR: {
-                    reloadchats();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            reloadchats();
+                        }
+                    });
                     break;
                 }
                 case TdApi.UpdateChatReadInbox.CONSTRUCTOR: {

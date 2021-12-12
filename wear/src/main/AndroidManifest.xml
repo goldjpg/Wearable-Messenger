@@ -37,10 +37,12 @@
         <activity
             android:name=".Chat_Activity"
             android:exported="true"
+            android:launchMode="singleInstance"
             android:label="@string/title_activity_chat" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleInstance"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
