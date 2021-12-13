@@ -11,13 +11,20 @@ android {
         targetSdk 31
         versionCode 3
         versionName "1.1"
-
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debugwear {
+            debuggable true
+            signingConfig signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            ndk{
+                abiFilters "armeabi-v7a" // Add only required cpu architectures here
+            }
         }
     }
     buildFeatures {
@@ -36,5 +43,4 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
     //noinspection GradleCompatible
     implementation 'com.google.android.support:wearable:2.8.1'
-    wearApp project(":wear")
 }

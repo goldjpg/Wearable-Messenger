@@ -79,7 +79,7 @@ public class Messages extends Activity {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
-                if(lmg.findFirstVisibleItemPosition() == adapter.localDataSet.size()-5){
+                if(lmg.findFirstVisibleItemPosition() > adapter.localDataSet.size()-4){
                     if(!loading && !end){
                         loadMoreMessages();
                     }
