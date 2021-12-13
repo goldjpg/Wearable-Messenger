@@ -33,6 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -55,6 +56,7 @@ public class Messages extends Activity {
     boolean end = false;
     TdApi.Message curplay = null;
     MediaPlayer mediaPlayer = null;
+    HashMap<String, TdApi.Message> pendingDownloads = new HashMap<>();
 
     public static int ACTION_MESSAGE_TEXT = 1;
 
@@ -69,6 +71,7 @@ public class Messages extends Activity {
         Chat_Activity.CustomScrollingLayoutCallback customScrollingLayoutCallback =
                 new Chat_Activity.CustomScrollingLayoutCallback();
         lmg = new WearableLinearLayoutManager(this, customScrollingLayoutCallback);
+        lmg.setReverseLayout(true);
         chatview.setLayoutManager(lmg);
         chatview.setAdapter(adapter);
         chatview.setHasFixedSize(false);
@@ -76,7 +79,7 @@ public class Messages extends Activity {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
-                if(lmg.findFirstCompletelyVisibleItemPosition() == 0){
+                if(lmg.findFirstVisibleItemPosition() == adapter.localDataSet.size()-5){
                     if(!loading && !end){
                         loadMoreMessages();
                     }
@@ -89,6 +92,10 @@ public class Messages extends Activity {
             chatview.scrollToPosition(0);
         }
         MainActivity.client.mylistener.add(myhandler);
+        MainActivity.client.client.send(new TdApi.OpenChat(mychat.id), new Client.ResultHandler() {
+            @Override
+            public void onResult(TdApi.Object object) {}
+        });
         loadMoreMessages();
     }
 
@@ -178,11 +185,10 @@ public class Messages extends Activity {
                 }else{
                     Toast.makeText(this, "Downloading...", Toast.LENGTH_SHORT).show();
                     if(cont.voiceNote.voice.local.canBeDownloaded && !cont.voiceNote.voice.local.isDownloadingActive){
+                        pendingDownloads.put(cont.voiceNote.voice.remote.id, message);
                         MainActivity.client.client.send(new TdApi.DownloadFile(cont.voiceNote.voice.id, 5, cont.voiceNote.voice.local.downloadOffset, 0, false), new Client.ResultHandler() {
                             @Override
-                            public void onResult(TdApi.Object object) {
-                                UpdateMessage(message.id);
-                            }
+                            public void onResult(TdApi.Object object) {}
                         });
                         UpdateMessage(message.id);
                     }
@@ -287,7 +293,7 @@ public class Messages extends Activity {
 
         @Override
         public int getItemViewType(int position) {
-           if(position == localDataSet.size()-1 && mychat.permissions.canSendMessages){
+           if(position == 0 && mychat.permissions.canSendMessages){
                return 1;
            }
            return 0;
@@ -297,7 +303,6 @@ public class Messages extends Activity {
             Object ob = localDataSet.get(position);
             if(ob instanceof TdApi.Message){
                 TdApi.Message me = (TdApi.Message) localDataSet.get(position);
-                print("Update " + me.id + "|" + position);
                 MessageViewHolder viewHolder = (MessageViewHolder) view;
                 viewHolder.message = me;
                 viewHolder.voicebutton.setVisibility(View.GONE);
@@ -354,11 +359,10 @@ public class Messages extends Activity {
                         viewHolder.myimage.setImageBitmap(BitmapFactory.decodeFile(myfile.local.path));
                     }else{
                         if(myfile.local.canBeDownloaded && !myfile.local.isDownloadingActive){
+                            pendingDownloads.put(myfile.remote.id, me);
                             MainActivity.client.client.send(new TdApi.DownloadFile(myfile.id, 15, myfile.local.downloadOffset, 0, false), new Client.ResultHandler() {
                                 @Override
-                                public void onResult(TdApi.Object object) {
-                                    UpdateMessage(myfile.id);
-                                }
+                                public void onResult(TdApi.Object object) {}
                             });
                         }
                         if(cont.photo.minithumbnail != null){
@@ -385,6 +389,7 @@ public class Messages extends Activity {
     }
 
     public void UpdateMessage(long id){
+        print("Update Message" + id);
         if(Looper.myLooper() == Looper.getMainLooper()){
             UpdateM(id);
         }else{
@@ -426,14 +431,15 @@ public class Messages extends Activity {
         long lastmessage = 0;
         loading = true;
         try{
-            if(adapter.localDataSet.size() > 0){
-                lastmessage = ((TdApi.Message)adapter.localDataSet.get(0)).id;
+            if(adapter.localDataSet.size() > 1){
+                lastmessage = ((TdApi.Message)adapter.localDataSet.get(adapter.localDataSet.size()-1)).id;
             }
         }catch (Exception ignored){}
 
         MainActivity.client.client.send(new TdApi.GetChatHistory(mychat.id, lastmessage, 0, 30, false), new Client.ResultHandler() {
             @Override
             public void onResult(TdApi.Object object) {
+                loading = false;
                 if(object.getConstructor() == TdApi.Messages.CONSTRUCTOR){
                     TdApi.Messages messages = (TdApi.Messages) object;
                     print("Received "+messages.totalCount+" messages");
@@ -441,27 +447,44 @@ public class Messages extends Activity {
                         end = true;
                     }else{
                         List<TdApi.Message> me = Arrays.asList(messages.messages);
-                        Collections.reverse(me);
-                        int curscroll = lmg.findFirstCompletelyVisibleItemPosition();
-                        adapter.localDataSet.addAll(0,me);
-                        adapter.notifyItemRangeChanged(0, messages.totalCount);
-                        chatview.scrollToPosition(curscroll+messages.totalCount);
+                        adapter.localDataSet.addAll(me);
+                        List<Long> readed = new ArrayList<Long>();
+                        for(TdApi.Message mes:me){
+                            readed.add(mes.id);
+                        }
+                        if(readed.size() > 0){
+                            print("Marking " + readed.size() + " messages as read.");
+                            long[] arr = readed.stream().mapToLong(i -> i).toArray();
+                            MainActivity.client.client.send(new TdApi.ViewMessages(mychat.id, 0, arr, false), new Client.ResultHandler() {
+                                @Override
+                                public void onResult(TdApi.Object object) {}
+                            });
+                        }
+                        Messages.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                adapter.notifyItemRangeChanged(adapter.localDataSet.size()-(messages.totalCount+1), messages.totalCount);
+                            }
+                        });
                     }
                 }else{
                     print("Failed to receive messages");
                 }
-                loading = false;
             }
         });
     }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        MainActivity.client.client.send(new TdApi.CloseChat(mychat.id), new Client.ResultHandler() {
+            @Override
+            public void onResult(TdApi.Object object) {}
+        });
         MainActivity.client.mylistener.remove(myhandler);
+        super.onDestroy();
     }
 
-    public String datetoString(long date){
+    public static String datetoString(long date){
         return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(date*1000);
     }
 
@@ -473,8 +496,8 @@ public class Messages extends Activity {
                     print("New message");
                     TdApi.UpdateNewMessage update = (TdApi.UpdateNewMessage) object;
                     if(update.message.chatId == mychat.id){
-                        adapter.localDataSet.add(adapter.getItemCount()-1,update.message);
-                        adapter.notifyItemRangeChanged(adapter.getItemCount()-2, 2);
+                        adapter.localDataSet.add(1,update.message);
+                        UpdateMessage(update.message.id);
                     }
                     break;
                 }case TdApi.UpdateMessageContent.CONSTRUCTOR: {
@@ -486,14 +509,33 @@ public class Messages extends Activity {
                                 TdApi.Message curob = (TdApi.Message) me;
                                 if(curob.id == update.messageId){
                                     curob.content = update.newContent;
-                                    adapter.notifyItemChanged(adapter.localDataSet.indexOf(me));
-                                    chatview.invalidate();
+                                    UpdateMessage(((TdApi.Message) me).id);
                                     break;
                                 }
                             }
                         }
                     }
                     break;
+                }case TdApi.UpdateFile.CONSTRUCTOR: {
+                    TdApi.UpdateFile update = (TdApi.UpdateFile) object;
+                    print("New file update" + update.file.remote.id);
+                    if(pendingDownloads.containsKey(update.file.remote.id)){
+                        TdApi.Message me = pendingDownloads.get(update.file.remote.id);
+                        if(me.content.getConstructor() == TdApi.MessageVoiceNote.CONSTRUCTOR){
+                            ((TdApi.MessageVoiceNote)me.content).voiceNote.voice = update.file;
+                        }else if(me.content.getConstructor() == TdApi.MessagePhoto.CONSTRUCTOR){
+                            TdApi.Photo pho = ((TdApi.MessagePhoto)me.content).photo;
+                            for(TdApi.PhotoSize fi:pho.sizes){
+                                if(fi.photo.remote.id.equals(update.file.remote.id)){
+                                    fi.photo = update.file;
+                                }
+                            }
+                        }
+                        UpdateMessage(me.id);
+                        if(!update.file.local.isDownloadingActive){
+                            pendingDownloads.remove(update.file.remote.id);
+                        }
+                    }
                 }
             }
         }

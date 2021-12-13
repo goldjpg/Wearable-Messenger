@@ -9,8 +9,8 @@ android {
         applicationId "de.goldjpg.wearable.messenger"
         minSdk 28
         targetSdk 31
-        versionCode 2
-        versionName "1.0"
+        versionCode 3
+        versionName "1.1"
 
     }
 

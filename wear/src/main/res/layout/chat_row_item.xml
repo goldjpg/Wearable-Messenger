@@ -5,18 +5,73 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:gravity="center"
     android:clickable="true"
-    android:id="@+id/chat_row_root"
-    >
+    android:id="@+id/chat_row_root">
 
     <ImageView
         android:id="@+id/chat_image"
         android:layout_width="56dp"
         android:layout_height="wrap_content"
         tools:src="@tools:sample/avatars" />
-
-    <TextView
-        android:id="@+id/chat_title"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:gravity="left">
+
+            <TextView
+                android:id="@+id/chat_title"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="TextView"
+                android:gravity="center_vertical"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/chat_last_message_time"
+                />
+
+            <TextView
+                android:id="@+id/chat_last_message_time"
+                android:layout_width="25dp"
+                android:layout_height="match_parent"
+                android:textSize="8sp"
+                android:text="00:00"
+                android:gravity="center"
+                app:layout_constraintEnd_toEndOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:gravity="left">
+
+            <TextView
+                android:id="@+id/chat_last_message"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:singleLine="true"
+                android:text="TextView"
+                android:textSize="10sp"
+                android:gravity="center_vertical"
+                app:layout_constraintEnd_toStartOf="@+id/chat_last_messages_count"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <TextView
+                android:id="@+id/chat_last_messages_count"
+                android:layout_width="30dp"
+                android:layout_height="match_parent"
+                android:text="10"
+                android:textSize="8sp"
+                android:singleLine="true"
+                android:gravity="center"
+                app:layout_constraintEnd_toEndOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </LinearLayout>
+
+
 </LinearLayout>

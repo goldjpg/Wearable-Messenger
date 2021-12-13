@@ -76,8 +76,11 @@ public class Chat_Activity extends Activity {
          * (custom ViewHolder).
          */
         public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-            private final ImageView chatImage;
-            private final TextView chatTitle;
+            public final ImageView chatImage;
+            public final TextView chatTitle;
+            public final TextView chatmessage;
+            public final TextView chatcount;
+            public final TextView chattime;
             public long chatid;
 
             public ViewHolder(View view) {
@@ -86,16 +89,11 @@ public class Chat_Activity extends Activity {
 
                 chatImage = (ImageView) view.findViewById(R.id.chat_image);
                 chatTitle = (TextView) view.findViewById(R.id.chat_title);
+                chatmessage = (TextView) view.findViewById(R.id.chat_last_message);
+                chatcount = (TextView) view.findViewById(R.id.chat_last_messages_count);
+                chattime = (TextView) view.findViewById(R.id.chat_last_message_time);
                 View root = view.findViewById(R.id.chat_row_root);
                 root.setOnClickListener(this);
-            }
-
-            public TextView getTextView() {
-                return chatTitle;
-            }
-
-            public ImageView getImageView() {
-                return chatImage;
             }
 
             @Override
@@ -121,18 +119,33 @@ public class Chat_Activity extends Activity {
         public void onBindViewHolder(ViewHolder viewHolder, final int position) {
             TdApi.Chat cur = localDataSet.get(position);
             if(cur.title.length() > 0){
-                viewHolder.getTextView().setText(cur.title);
+                viewHolder.chatTitle.setText(cur.title);
             }else{
-                viewHolder.getTextView().setText("unknown");
+                viewHolder.chatTitle.setText("unknown");
             }
             if(cur.photo != null){
                 if(cur.photo.small.local.isDownloadingCompleted){
-                    viewHolder.getImageView().setImageBitmap(BitmapFactory.decodeFile(cur.photo.small.local.path));
+                    viewHolder.chatImage.setImageBitmap(BitmapFactory.decodeFile(cur.photo.small.local.path));
                 }else{
-                    viewHolder.getImageView().setImageResource(R.drawable.ic_baseline_cached_24);
+                    viewHolder.chatImage.setImageResource(R.drawable.ic_baseline_cached_24);
                 }
             }else{
-                viewHolder.getImageView().setImageResource(R.drawable.ic_baseline_chat_24);
+                viewHolder.chatImage.setImageResource(R.drawable.ic_baseline_chat_24);
+            }
+            if(cur.unreadCount > 0){
+                viewHolder.chatcount.setVisibility(View.VISIBLE);
+                viewHolder.chatcount.setText(cur.unreadCount + "");
+            }else{
+                viewHolder.chatcount.setVisibility(View.GONE);
+            }
+            viewHolder.chatmessage.setText("");
+            viewHolder.chattime.setText("");
+            if(cur.lastMessage != null){
+                if(cur.lastMessage.content.getConstructor() == TdApi.MessageText.CONSTRUCTOR){
+                    TdApi.MessageText cont = (TdApi.MessageText) cur.lastMessage.content;
+                    viewHolder.chatmessage.setText(cont.text.text);
+                }
+                viewHolder.chattime.setText(Messages.datetoString(cur.lastMessage.date));
             }
             viewHolder.chatid = cur.id;
         }
